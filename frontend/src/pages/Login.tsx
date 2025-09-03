@@ -22,6 +22,11 @@ export default function Login() {
         }
     };
 
+    const handleGitHubLogin = () => {
+        window.location.href = "http://localhost:8000/api/auth/github/login";
+    };
+
+
     return (
         <div className="flex flex-col items-center justify-center bg-gray-900 px-6 py-8 mx-auto md:h-screen lg:py-0">
             <h1 className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
@@ -49,7 +54,7 @@ export default function Login() {
                 <button type="submit" className="bg-blue-500 text-white p-2 rounded">
                     Login
                 </button>
-                <button className="bg-blue-900 text-white p-2 rounded">
+                <button onClick={handleGitHubLogin} className="bg-blue-900 text-white p-2 rounded">
                     Login with github
                 </button>
             </form>
