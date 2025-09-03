@@ -1,10 +1,10 @@
 # backend/main.py
 import os
-from fastapi import HTTPException
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
+from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 
 from models import LoginRequest
@@ -15,11 +15,14 @@ load_dotenv()
 
 app = FastAPI()
 
-# ===== CORS setup =====
-origins = [
-    "http://localhost:5173",  # Vite dev server
-]
+# ===== SessionMiddleware =====
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "super-secret-key")
+)
 
+# ===== CORS setup =====
+origins = ["http://localhost:5173"]  # Vite frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -31,7 +34,7 @@ app.add_middleware(
 # ===== Helper function to get current user from JWT =====
 def get_current_user(authorization: str = Header(...)):
     try:
-        token = authorization.split(" ")[1]  # Authorization: Bearer <token>
+        token = authorization.split(" ")[1]  # Bearer <token>
     except IndexError:
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -39,7 +42,6 @@ def get_current_user(authorization: str = Header(...)):
     if not payload:
         raise HTTPException(status_code=403, detail="Invalid or expired token")
     return payload
-
 
 # ===== Local login endpoint =====
 @app.post("/api/auth/login")
@@ -58,7 +60,6 @@ def login(data: LoginRequest):
     })
     return {"access_token": token, "role": user["role"]}
 
-
 # ===== GitHub OAuth setup =====
 oauth = OAuth()
 oauth.register(
@@ -71,15 +72,13 @@ oauth.register(
     client_kwargs={"scope": "user:email"},
 )
 
-
-# GitHub login route
+# ===== GitHub login route =====
 @app.get("/api/auth/github/login")
 async def github_login(request: Request):
     redirect_uri = request.url_for("github_callback")
     return await oauth.github.authorize_redirect(request, redirect_uri)
 
-
-# GitHub callback route
+# ===== GitHub callback route =====
 @app.get("/api/auth/github/callback")
 async def github_callback(request: Request):
     try:
@@ -88,6 +87,7 @@ async def github_callback(request: Request):
         user = user_data.json()
         print("GitHub user response:", user)
 
+        # Create JWT token for frontend
         jwt_token = create_access_token({
             "id": user["id"],
             "email": user.get("email") or f"{user['login']}@github.com",
@@ -106,7 +106,6 @@ async def github_callback(request: Request):
 @app.get("/api/dashboard")
 def dashboard(user=Depends(get_current_user)):
     return {"message": f"Hello {user['email']}! Role: {user['role']}"}
-
 
 # ===== Admin-only route =====
 @app.get("/api/admin")

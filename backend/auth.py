@@ -1,8 +1,12 @@
-# backend/auth.py
+import os
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
+from dotenv import load_dotenv
 
-SECRET_KEY = "your_secret_key_here"  # use a secure random key in real apps
+# Load environment variables
+load_dotenv()
+
+SECRET_KEY = os.getenv("JWT_SECRET", "fallback-secret")  # fallback for dev
 ALGORITHM = "HS256"
 
 # Create JWT token
